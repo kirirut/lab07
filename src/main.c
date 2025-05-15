@@ -2,16 +2,30 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 #include "record.h"
 #include "lock.h"
 
+int fd = -1; // глобальный файловый дескриптор
+
+void handle_sigint(int sig) {
+    printf("\nCaught signal %d (Ctrl+C). Exiting gracefully...\n", sig);
+    if (fd != -1) {
+        close(fd);
+        printf("File descriptor closed.\n");
+    }
+    exit(0);
+}
+
 int main(int argc, char *argv[]) {
+    signal(SIGINT, handle_sigint); // установка обработчика SIGINT
+
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <file>\n", argv[0]);
         exit(1);
     }
 
-    int fd = open(argv[1], O_RDWR | O_CREAT, 0644);
+    fd = open(argv[1], O_RDWR | O_CREAT, 0644);
     if (fd == -1) {
         perror("Cannot open file");
         exit(1);
@@ -28,7 +42,11 @@ int main(int argc, char *argv[]) {
         printf("4. Create record\n");
         printf("0. Exit\n");
         printf("Select choice: ");
-        scanf("%d", &choice);
+        if (scanf("%d", &choice) != 1) {
+            printf("Invalid input\n");
+            while (getchar() != '\n'); // очистка ввода
+            continue;
+        }
 
         switch (choice) {
             case 1:
